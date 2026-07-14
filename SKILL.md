@@ -8,9 +8,9 @@ description: >
   leftover sessions after /minimal or /fullscreen, detached grok processes,
   or asks to reap/clean/check orphan grok PIDs.
 user-invocable: true
-argument-hint: "[check|kill]"
+argument-hint: "[kill|check]"
 metadata:
-  short-description: "Check or kill detached Grok orphans"
+  short-description: "Kill or check for detached Grok orphans"
 ---
 
 # /deorphan
@@ -50,11 +50,10 @@ Bare default (also kill) is fine if args are empty:
 bash "$HOME/.grok/skills/grok-deorphan/scripts/deorphan.sh"
 ```
 
-3. Paste the script’s stdout into your reply (the `=== deorphan report ===` block).
-4. One-sentence summary:
+3. One-sentence summary:
    - **check:** how many attached (note which is SELF), how many orphans, nothing killed.
    - **kill:** how many killed, how many attached kept (including SELF).
-5. **Stop.** Do not scan `/proc` yourself. Do not `kill` any PID by hand. Do not “improve” the command.
+4. **Stop.** Do not scan `/proc` yourself. Do not `kill` any PID by hand. Do not “improve” the command.
 
 ## Forbidden
 
@@ -64,22 +63,10 @@ bash "$HOME/.grok/skills/grok-deorphan/scripts/deorphan.sh"
 - Calling `kill` mode when the user asked for `check`
 - Rewriting the script mid-flight unless the user asks to change the skill
 
-## What the script already guarantees
+## Kill safety
 
-All of this is **inside** `scripts/deorphan.sh` (do not re-check in ad-hoc shell):
-
-| Check | Effect |
-|-------|--------|
-| `uid == $UID` | Only current user’s processes |
-| **KEEP** = live terminal | ctty `pts/*` that exists, and/or open FD to a **live** `/dev/pts/N`, and/or `sshd:user@pts/N` ancestor with live pts |
-| **ORPHAN** = no live terminal | Deleted pts FDs alone do **not** count as attached (SSH-dead leftovers) |
-| **SELF** tag | Invoking agent is always listed under KEEP with `SELF` when detected (force-merged after scan if classify omitted it; never kill-listed) |
-| Report fields | `pid ppid tty cwd resume live_pts del_pts reason` so sessions map to projects |
-| `/proc/pid/exe` is a Grok binary | Not random commands with “grok” in args |
-| cmdline denylist | Skips `deorphan` / `de-orphan` / `grok-deorphan`, reap helpers, debuggers |
-| Explicit PID `kill -TERM` then optional `KILL` | No process-group wipes (kill mode only); never signals SELF |
-| Orphan bash re-spawn wrappers | TERM only if no attached grok child remains (kill mode only) |
-| `mode: check` in report | Confirms no signals were sent |
+Classification and kill safety are entirely inside deorphan.sh (uid, live-terminal KEEP, SELF never
+killed, explicit PID only). Do not re-scan /proc or re-kill by hand.
 
 ## If the script is missing
 
